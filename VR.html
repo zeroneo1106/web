@@ -15,7 +15,24 @@
       AFRAME.registerComponent('input-listen', {  
         init:function () { //初期化
           const txt = document.getElementById("txt");
+          const txt2 = document.getElementById("txt2");
+          const txtp = document.getElementById("txtp");
+          const txtw = document.getElementById("txtw");
           this.el.grip=false;
+          
+          //スティックの縦方向の値の和
+          this.el.sumY=1;
+          this.el.sumX=0;
+          
+          
+          //スティックが動いたときに呼ばれる
+          //this.el.addEventListener('axismove', function (e) {
+            //x,yの値が-1~1で得られるのでそれを文字で表示
+            //txt2.setAttribute("value", e.detail.axis[0].toFixed(2)+","+e.detail.axis[1].toFixed(2)+","+this.sumY);
+            //スティックの縦方向の値合計．ーをかけるのはスティックの前後と±を一致させるため
+            //this.sumY+=(-e.detail.axis[1]*0.01);
+          //});
+          
           
           //レイキャスターが何かに交差したとき
           this.el.addEventListener('raycaster-intersection', function (e) {
@@ -73,6 +90,8 @@
           //グリップボタンを押し始めたときに実行される(両手に対応)
           this.el.addEventListener('gripdown', function (e) {
             txt.setAttribute("value", "grip pressed");
+            this.sumY=1;
+            this.sumX=0;
             this.grip=true;
           });
           //グリップボタンを離したときに実行される(両手に対応)
@@ -128,6 +147,14 @@
             if (e.detail.y < -0.95) { txt.setAttribute("value", "UP"); }
             if (e.detail.x < -0.95) { txt.setAttribute("value", "LEFT"); }
             if (e.detail.x > 0.95) { txt.setAttribute("value", "RIGHT"); }
+            
+            //axismoveの内容を以下にコピー
+            //x,yの値が-1~1で得られるのでそれを文字で表示
+            txt2.setAttribute("value", e.detail.x.toFixed(2)+","+e.detail.y.toFixed(2)+","+this.sumX.toFixed(2)+","+this.sumY.toFixed(2));
+            //スティックの縦方向の値合計．ーをかけるのはスティックの前後と±を一致させるため
+            this.sumY+=(-e.detail.y*0.01);
+            this.sumX+=( e.detail.x*0.01);
+            
           });
         },
         
@@ -139,7 +166,21 @@
           //コントローラの1.1m手前の座標を計算(コントローラが原点)  
           var p = new THREE.Vector3(ray.x, ray.y, ray.z);
           p.normalize();
-          p.multiplyScalar(1.2);
+          //txtp.setAttribute("value", "p="+p.x.toFixed(2)+","+p.y.toFixed(2)+","+p.z.toFixed(2)+":"+this.sumY.toFixed(2));
+          txtp.setAttribute("value", "p="+p.x.toFixed(2)+","+p.y.toFixed(2)+","+p.z.toFixed(2)+":"+this.el.sumY.toFixed(2));
+
+          //var w = new THREE.Vector3(ray.x, ray.y, ray.z);
+          var w = new THREE.Vector3(1.0, 0.0, 0.0);
+          w.normalize();
+          txtw.setAttribute("value", "w="+w.x.toFixed(2)+","+w.y.toFixed(2)+","+w.z.toFixed(2)+":"+this.el.sumX.toFixed(2));
+          
+          //スティックの前後により選択されているオブジェクトを前後に移動
+          p.multiplyScalar(1.2*this.el.sumY);
+          w.multiplyScalar(1.0*this.el.sumX);
+          p.addVectors(p, w);
+          //p.x = p.x * 1.2*this.el.sumX;
+          //p.y = p.y * 1.2*this.el.sumY;
+          //p.z = p.z ;
           //ローカル座標(コントローラ中心)をワールド座標に変換
           this.el.object3D.localToWorld(p);
           //Raycasterの先端に選択オブジェクトを追従させる
@@ -149,7 +190,7 @@
     </script>
     <a-scene physics="debug: false; gravity: 0; restitution: 0.9;" background="color: #AAAAAA">
       <a-box static-body class="collidable" position="-1 0.5 -3" rotation="0 45 0" color="#4CC3D9"></a-box>
-      <a-sphere static-body class="collidable" position="0 1.25 -5" radius="1.25" color="#EF2D5E"></a-sphere>
+      <a-sphere static-body class="collidable" position="0 1.25 -4" radius="0.8" color="#EF2D5E"></a-sphere>
       <a-cylinder static-body class="collidable" position="1 0.75 -3" radius="0.5" height="1.5" color="#FFC65D"></a-cylinder>
       <a-plane static-body position="0 0 0" rotation="-90 0 0" width="10" height="10" src="https://tmdoi.github.io/website/js/controller/back.png" shadow></a-plane>
       <a-plane static-body position="0 5 0" rotation="90 0 0" width="10" height="10" src="https://tmdoi.github.io/website/js/controller/back.png" shadow></a-plane>
@@ -160,16 +201,26 @@
       
       <a-entity id="cameraRig">
         <a-entity id="head" camera  wasd-controls look-controls position="0 1.6 0">
-          <a-text id="txt" value="--11-1.1.0" position="0 0 -1" scale="0.5 0.5 0.5" align="center" color="#FFFFFF"></a-text>
+          <a-text id="txt" value="--18-v3-" position="0 0.3 -1" scale="0.25 0.25 0.25" align="center" color="#FFFFFF"></a-text>
         </a-entity>
       
         <a-entity teleport-controls="cameraRig: #cameraRig; teleportOrigin:#head;
                   startEvents: teleportstart; endEvents: teleportend"
                   raycaster="objects: .collidable; far:1.2;"
-                  oculus-touch-controls="hand: left" input-listen> </a-entity>
+                  oculus-touch-controls="hand: left" input-listen>
+        　　　　<a-text value="Trigger: shoot a ball\nGrip: Grab large object\nX: Teleport" position="0 0.08 0"
+          　　          rotation="-90 0 0" scale="0.1 0.1 0.1" align="center" color="#FFFFFF"></a-text>
+        </a-entity>
         
         <a-entity raycaster="objects: .collidable; far:1.2;"
-                  oculus-touch-controls="hand: right" input-listen> </a-entity>
+                  oculus-touch-controls="hand: right" input-listen>
+         　　<a-text value="Trigger: shoot a ball\nGrip: Grab large object\nA: Remove small balls"
+                    　　position="0 0.08 0" rotation="-90 0 0" scale="0.1 0.1 0.1" align="center" color="#FFFFFF"></a-text>
+          <a-text id="txt2" value="0,0,0,0"     position="0 0.125 0" rotation="-90 0 0" scale="0.1 0.1 0.1" align="center" color="#FFFFFF"></a-text>
+          <a-text id="txtp" value="p=0,0,0:1.0" position="0 0.150 0" rotation="-90 0 0" scale="0.1 0.1 0.1" align="center" color="#FFFFFF"></a-text>
+          <a-text id="txtw" value="w=0,0,0:0.0" position="0 0.175 0" rotation="-90 0 0" scale="0.1 0.1 0.1" align="center" color="#FFFFFF"></a-text>
+
+        </a-entity>
         
       </a-entity>
       <a-sky color="#ECECEC"></a-sky>
